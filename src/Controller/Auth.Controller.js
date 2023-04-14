@@ -3,9 +3,8 @@ import { genSalt, hash, compare } from "bcrypt";
 import { config } from "dotenv";
 import { verify, sign } from "jsonwebtoken";
 import { userModel } from "../model/User.models"
-import { config } from "dotenv";
 config()
-class AuthController {
+export class AuthController {
 	// signup method
 	signup(req, res) {
 		const form = new IncomingForm()
@@ -16,7 +15,7 @@ class AuthController {
 
 			const { username, email, password } = fields
 
-			const salt = genSalt(15)
+			const salt =await genSalt(15)
 			const hashPassword = await hash(password, salt);
 			const newAccount = new userModel({
 				username, email, password: hashPassword
@@ -33,10 +32,10 @@ class AuthController {
 
 		)
 	}
+	
 	// signIn method
 	signin(req, res) {
-		form = new IncomingForm()
-
+		const form = new IncomingForm()
 		form.parse(req, async (err, fields, files) => {
 			if (err) {
 				return res.status(500).json({ msg: "Network error:Field to login, please try again" })
@@ -52,7 +51,7 @@ class AuthController {
 
 				const isPasswordValid = await compare(password, user.password)
 				if (!isPasswordValid) {
-					return res.status(400).json({ msg: " Invalid password" })
+					return res.status(400).json({ msg: "Invalid password" })
 				}
 				const token_payload = {
 					_id: user.id,
@@ -81,7 +80,6 @@ class AuthController {
 	}
 
 	// forgot password method 
-
 	forgotPassword(req, res) {
 		const form = new IncomingForm();
 		form.parse(req, async(err, fields, files) => {
@@ -93,16 +91,15 @@ class AuthController {
 			if (!email || !password) {
 				return res.status(400).json({ msg: "All fields are required to reset password" })
 			}
-			const sale = genSalt(15)
+			const sale = await genSalt(15)
 			const hashPassword = await hash(password, sale)
 			try {
-				const updatedAccount = await userModel.findOneAndUpdate({
-					email: email,
-					$set: {
-						password: hashPassword
-					}
-				})
-				return res.status(200).json({msg:"Account passord reset successful "})
+				const user = await userModel.findOne({ email: email})
+				if(!user) {
+					return res.status(404).json({ msg: "Account with this email does not exist or does not have"})
+				}
+				const updateUser = await userModel.findOneAndUpdate({ email: email }, { $set: { password: hashPassword } }, { new: true })
+				return res.status(200).json({ msg: "Success to reset password" })
 			} catch (error) {
 				return res.status(500).json({msg:"Field to reset password, please try again"})
 			}
